@@ -33,12 +33,7 @@ import (
 )
 
 // reference indicates the default Envoy version to be used for testing.
-// 1.16 is the last version to match the Istio version we are using in go.mod:
-//   https://github.com/istio/istio/blob/1.8.4/istio.deps ->
-//   https://github.com/istio/proxy/blob/4cc266a75a84435b26613da6df6c32b4a2df4f3e/WORKSPACE ->
-//   https://github.com/istio/envoy/commit/5b0c5f7b21f84b6ab86e5f416bdaf6bb0fbc2a32 -> ~ 1.16
-// However, 1.16 fails to complete startup when XDS is configured (it blocks on 503/PRE_INITIALIZING).
-// Hence, we make an exception and use the latest patch of Envoy 1.17 instead.
+// This currently latest, but we may support a range at some point.
 var reference = "standard:1.17.1"
 
 var once sync.Once
@@ -85,10 +80,7 @@ func fetchEnvoy() error {
 }
 
 // RunKillOptions allows customization of Envoy lifecycle.
-type RunKillOptions struct {
-	Bootstrap            string
-	DisableAutoAdminPort bool
-}
+type RunKillOptions struct{ Bootstrap string }
 
 // RequireRunTerminate executes envoy, waits for ready, sends sigint, waits for termination, then unarchives the debug
 // directory. It should be used when you just want to cycle through an Envoy lifecycle.
@@ -100,18 +92,15 @@ func RequireRunTerminate(t *testing.T, r binary.Runner, options RunKillOptions) 
 		args = append(args, "-c", options.Bootstrap)
 	}
 
-	// Generate base id to allow concurrent envoys in tests. (minimum Envoy 1.15)
-	args = append(args, "--use-dynamic-base-id")
-
-	if !options.DisableAutoAdminPort {
+	args = append(args,
+		// Generate base id to allow concurrent envoys in tests. (minimum Envoy 1.15)
+		"--use-dynamic-base-id",
 		// Use ephemeral admin port to avoid test conflicts.
 		// Enable admin access logging to help debug test failures. (minimum Envoy 1.12 for macOS support)
-		args = append(args,
-			"--config-yaml", "admin: {access_log_path: '/dev/stdout', address: {socket_address: {address: '127.0.0.1', port_value: 0}}}",
-		)
-		// Allows us the status checker to read the resolved admin port after envoy starts
-		envoy.EnableAdminAddressDetection(r.(*envoy.Runtime))
-	}
+		"--config-yaml", "admin: {access_log_path: '/dev/stdout', address: {socket_address: {address: '127.0.0.1', port_value: 0}}}",
+	)
+	// Allows us the status checker to read the resolved admin port after envoy starts
+	envoy.EnableAdminAddressDetection(r.(*envoy.Runtime))
 
 	// This ensures on any panic the envoy process is terminated, which can prevent test hangs.
 	deferredInterrupt := func() {
@@ -154,6 +143,7 @@ func RequireRunTerminate(t *testing.T, r binary.Runner, options RunKillOptions) 
 
 	// RunPath deletes the debug store directory after making a tar.gz with the same name.
 	// Restore it so assertions can read the contents later.
-	e := archiver.Unarchive(r.DebugStore()+".tar.gz", filepath.Dir(r.DebugStore()))
-	require.NoError(t, e, "error extracting DebugStore")
+	debugArchive := r.DebugStore() + ".tar.gz"
+	e := archiver.Unarchive(debugArchive, filepath.Dir(r.DebugStore()))
+	require.NoError(t, e, "error extracting DebugStore archive %s", debugArchive)
 }

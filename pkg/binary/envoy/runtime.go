@@ -56,7 +56,7 @@ func (o RuntimeOptions) AndAll(opts RuntimeOptions) RuntimeOptions {
 func NewRuntime(options ...RuntimeOption) (binary.FetchRunner, error) {
 	local := common.HomeDir
 	runtime := &Runtime{
-		Config:          NewConfig(),
+		Config:          newConfig(),
 		RootDir:         local,
 		fetcher:         fetcher{local},
 		TmplDir:         filepath.Join(local, "templates"),

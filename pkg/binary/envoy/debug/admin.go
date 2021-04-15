@@ -56,7 +56,7 @@ func retrieveAdminAPIData(r binary.Runner) error {
 		log.Warnf("unable to capture Envoy configuration and metrics since Envoy Admin listener is not enabled")
 		return nil
 	}
-	var multiErr *multierror.Error
+	multiErr := &multierror.Error{}
 	for path, file := range adminAPIPaths {
 		resp, err := http.Get(fmt.Sprintf("http://%s/%v", e.GetAdminAddress(), path))
 		if err != nil {

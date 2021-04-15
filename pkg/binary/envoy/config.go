@@ -18,58 +18,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
-// Mode is the mode Envoy should run in
-type Mode string
-
-const (
-	// Sidecar instructs Envoy to run as a sidecar
-	Sidecar Mode = "sidecar"
-	// LoadBalancer instructs Envoy to run as a loadbalancer (e.g. gateway)
-	LoadBalancer Mode = "loadbalancer"
-)
-
-// SupportedModes indicate the modes that are current supported by GetEnvoy
-var SupportedModes = []string{string(LoadBalancer)}
-
-// ParseMode converts the passed string into a valid mode or empty string
-func ParseMode(s string) Mode {
-	switch Mode(s) {
-	case Sidecar:
-		return Sidecar
-	case LoadBalancer:
-		return LoadBalancer
-	default:
-		return ""
-	}
+func newConfig() *Config {
+	return &Config{AdminPort: 15000}
 }
 
-// NewConfig creates and mutates a config object based on passed params
-func NewConfig(options ...func(*Config)) *Config {
-	cfg := &Config{
-		AdminPort:      15000,
-		DrainDuration:  &durationpb.Duration{Seconds: 30},
-		ConnectTimeout: &durationpb.Duration{Seconds: 5},
-	}
-	for _, o := range options {
-		o(cfg)
-	}
-	return cfg
-}
-
-// Config store Envoy config information for use by bootstrap and arg mutators
+// Config store Envoy config information for arg mutators
 type Config struct {
-	XDSAddress     string
-	Mode           Mode
-	IPAddresses    []string
-	ALSAddresss    string
-	DrainDuration  *durationpb.Duration
-	ConnectTimeout *durationpb.Duration
-	AdminAddress   string
-	AdminPort      int32
+	AdminAddress string
+	AdminPort    int32
 }
 
 // GetAdminAddress returns a host:port formatted address of the Envoy admin listener.
